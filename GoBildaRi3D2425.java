@@ -246,10 +246,11 @@
              double rx = gamepad1.right_stick_x * speedMultiplier; // Rotation
  
              // Get robot's heading and adjust movement direction accordingly
-             double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-             double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-             double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
- 
+             //.double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+             //double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+             //double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+             double rotX = x;
+             double rotY = y;
              // Normalize the movement values
              double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
              double frontLeftPower = (rotY + rotX + rx) / denominator;
