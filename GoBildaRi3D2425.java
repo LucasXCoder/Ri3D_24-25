@@ -83,8 +83,7 @@
      We can multiply these two ratios together to get our final reduction of ~254.47:1.
      The motor's encoder counts 28 times per rotation. So in total you should see about 7125.16
      counts per rotation of the arm. We divide that by 360 to get the counts per degree. */
-     final double ARM_TICKS_PER_DEGREE =
-             28 // number of encoder ticks per rotation of the bare motor
+     final double ARM_TICKS_PER_DEGREE = 28 // number of encoder ticks per rotation of the bare motor
                      * 250047.0 / 4913.0 // This is the exact gear ratio of the 50.9:1 Yellow Jacket gearbox
                      * 100.0 / 20.0 // This is the external gear reduction, a 20T pinion gear that drives a 100T hub-mount gear
                      * 1/360.0; // we want ticks per degree, not per rotation
@@ -106,7 +105,7 @@
      final double ARM_CLEAR_BARRIER         = 15 * ARM_TICKS_PER_DEGREE;
      final double ARM_SCORE_SPECIMEN        = 90 * ARM_TICKS_PER_DEGREE;
      final double ARM_SCORE_SAMPLE_IN_LOW   = 90 * ARM_TICKS_PER_DEGREE;
-     final double ARM_ATTACH_HANGING_HOOK   = 110 * ARM_TICKS_PER_DEGREE;
+     final double ARM_ATTACH_HANGING_HOOK   = 135 * ARM_TICKS_PER_DEGREE;
      final double ARM_WINCH_ROBOT           = 10  * ARM_TICKS_PER_DEGREE;
  
      /* Variables to store the speed the intake servo should be set at to intake, and deposit game elements. */
@@ -115,11 +114,11 @@
      final double INTAKE_DEPOSIT    =  3.0;
  
      /* Variables to store the positions that the wrist should be set to when folding in, or folding out. */
-     final double WRIST_FOLDED_IN   = 0.235;
+     final double WRIST_FOLDED_IN   = 0.9;
      final double WRIST_FOLDED_OUT  = 0.58;
  
      /* A number in degrees that thiggers can adjust the arm position by */
-     final double FUDGE_FACTOR = 360 * ARM_TICKS_PER_DEGREE;
+     final double FUDGE_FACTOR = 30 * ARM_TICKS_PER_DEGREE;
  
      /* Variables that are used to set the arm to a specific position */
      double armPosition = (int)ARM_COLLAPSED_INTO_ROBOT;
@@ -129,11 +128,11 @@
  
      final double LIFT_COLLAPSED = 0 * LIFT_TICKS_PER_MM;
      final double LIFT_SCORING_IN_LOW_BASKET = 0 * LIFT_TICKS_PER_MM;
-     final double LIFT_SCORING_IN_HIGH_BASKET = 480 * LIFT_TICKS_PER_MM;
+     final double LIFT_SCORING_IN_HIGH_BASKET = 656 * LIFT_TICKS_PER_MM;
  
      double liftPosition = LIFT_COLLAPSED;
  
-     double cycletime = 0;
+     double cycletime = 1;
      double looptime = 0;
      double oldtime = 0;
  
@@ -208,9 +207,22 @@
  
          /* Make sure that the intake is off, and the wrist is folded in. */
          intake.setPower(INTAKE_OFF);
-         wrist.setPosition(WRIST_FOLDED_OUT);
- 
-         /* Send telemetry message to signify robot waiting */
+         wrist.setPosition(WRIST_FOLDED_IN);
+                // Temporary forward movement during initialization
+        //leftFrontDrive.setPower(0.5);  // Set forward power
+        //leftBackDrive.setPower(0.5);
+        //rightFrontDrive.setPower(0.5);
+        //rightBackDrive.setPower(0.5);
+        
+        sleep(5000); // Move forward for 0.5 seconds
+        
+        // Stop movement
+        leftFrontDrive.setPower(0);
+        leftBackDrive.setPower(0);
+        rightFrontDrive.setPower(0);
+        rightBackDrive.setPower(0);
+
+        /* Send telemetry message to signify robot waiting */
          telemetry.addLine("Robot Ready.");
          telemetry.update();
          // Retrieve the IMU from the hardware map
@@ -307,12 +319,7 @@
              than the other, it "wins out". This variable is then multiplied by our FUDGE_FACTOR.
              The FUDGE_FACTOR is the number of degrees that we can adjust the arm by with this function. */
  
-             //armPositionFudgeFactor = FUDGE_FACTOR * (gamepad2.right_trigger + (-gamepad2.left_trigger));
-             if (gamepad2.right_trigger > 0 || gamepad2.left_trigger > 0) {
-                 armPositionFudgeFactor = FUDGE_FACTOR * (gamepad2.right_trigger + (-gamepad2.left_trigger));
-             } else {
-                 armPositionFudgeFactor = armMotor.getCurrentPosition();  // Keeps the arm at its current position when no triggers are pressed
-             }
+             armPositionFudgeFactor = FUDGE_FACTOR * (gamepad2.right_trigger + (-gamepad2.left_trigger));
              /* Here we implement a set of if else statements to set our arm to different scoring positions.
              We check to see if a specific button is pressed, and then move the arm (and sometimes
              intake and wrist) to match. For example, if we click the right bumper we want the robot
@@ -327,7 +334,14 @@
                  wrist.setPosition(WRIST_FOLDED_OUT);
                  intake.setPower(INTAKE_COLLECT);
                  }
- 
+                else if(gamepad2.a){
+                     /* This is the intaking/collecting arm position */
+                     armPosition = ARM_COLLECT;
+                     //liftPosition = LIFT_COLLAPSED;
+                     wrist.setPosition(WRIST_FOLDED_OUT);
+                     intake.setPower(INTAKE_COLLECT);
+                 }
+     
                  else if (gamepad1.b){
                      /* This is about 20° up from the collecting position to clear the barrier
                      Note here that we don't set the wrist position or the intake power when we
@@ -335,8 +349,31 @@
                      they were doing before we clicked left bumper. */
                      armPosition = ARM_CLEAR_BARRIER;
                  }
- 
+                 else if (gamepad2.b){
+                     /* This is about 20° up from the collecting position to clear the barrier
+                     Note here that we don't set the wrist position or the intake power when we
+                     select this "mode", this means that the intake and wrist will continue what
+                     they were doing before we clicked left bumper. */
+                     armPosition = ARM_CLEAR_BARRIER;
+                 }
+                 else if (gamepad1.y) {
+                     // Check if the Y button is pressed
+                     // Step 1: Drive forward for 0.5 seconds
+                     leftFrontDrive.setPower(0.1);
+                     rightFrontDrive.setPower(0.1);
+                     leftBackDrive.setPower(0.1);
+                     rightBackDrive.setPower(0.1);
+                     sleep(800); // Drive forward for 0.5 seconds
+                     // Step 2: Set the arm to the target position
+                     armPosition = 3000;// Target arm position
+                 }
+                 
                  else if (gamepad1.x){
+                     /* This is the correct height to score the sample in the HIGH BASKET */
+                     armPosition = ARM_SCORE_SAMPLE_IN_LOW;
+                     //liftPosition = LIFT_SCORING_IN_HIGH_BASKET;
+                 }
+                 else if (gamepad2.x){
                      /* This is the correct height to score the sample in the HIGH BASKET */
                      armPosition = ARM_SCORE_SAMPLE_IN_LOW;
                      //liftPosition = LIFT_SCORING_IN_HIGH_BASKET;
@@ -358,10 +395,12 @@
                  }
  
                  else if (gamepad1.dpad_up){
-                     /* This sets the arm to vertical to hook onto the LOW RUNG for hanging */
-                     armPosition = ARM_ATTACH_HANGING_HOOK;
-                     intake.setPower(INTAKE_OFF);
-                     wrist.setPosition(WRIST_FOLDED_IN);
+                     leftFrontDrive.setPower(1);  // Set forward power
+                     leftBackDrive.setPower(1);
+                     rightFrontDrive.setPower(1);
+                     rightBackDrive.setPower(1);
+                     armPosition = 0;
+                     sleep(5000);
                  }
  
                  else if (gamepad1.dpad_down){
@@ -385,9 +424,16 @@
              is above 45°, then we just set armLiftComp to 0. It's only if it's below 45° that we set it
              to a value.
               */
- 
+            /*
             if (armPosition < 45 * ARM_TICKS_PER_DEGREE){
                 armLiftComp = (0.25568 * liftPosition);
+            }
+            else{
+                armLiftComp = 0;
+            }
+            */
+            if (armPosition < 45 * ARM_TICKS_PER_DEGREE){
+                armLiftComp = (0.15568 * liftPosition);
             }
             else{
                 armLiftComp = 0;
@@ -422,7 +468,6 @@
              that our lift can move 2800mm in one cycle, but since each cycle is only a fraction of a second,
              we are only incrementing it a small amount each cycle.
               */
- 
              if (gamepad2.right_bumper){
                  liftPosition += 2800 * cycletime;
              }
@@ -451,7 +496,7 @@
                  telemetry.addLine("MOTOR EXCEEDED CURRENT LIMIT!");
              }
  
-             /* at the very end of the stream, we added a linear actuator kit to try to hang the robot on.
+             /* at the very end of the stream, we added a linear actuator kit to try to hang the robothh                                                                                                                                                                                                       on.
              * it didn't end up working... But here's the code we run it with. It just sets the motor
              * power to match the inverse of the left stick y.
              */
@@ -480,11 +525,7 @@
             telemetry.addData("Lift Target Position",liftMotor.getTargetPosition());
             telemetry.addData("lift current position", liftMotor.getCurrentPosition());
             telemetry.addData("liftMotor Current:",((DcMotorEx) liftMotor).getCurrent(CurrentUnit.AMPS));
-            telemetry.update();
- 
- 
- 
+            telemetry.update();   
         }
      }
  }
- 
